@@ -1,0 +1,110 @@
+#!/bin/bash
+############################################################
+
+_help()
+{
+cat <<-END
+#########################################################################
+# Author: alf149                                                        #
+# Scriptname: mycrt version 0.5                                         #
+# You'll find last version at https://github.com/alf149/myfiles         #
+#                                                                       #
+# Uses jq as json handler                                               #
+# uses curl to get json form crt.sh                                     #
+#                                                                       #
+#########################################################################
+
+Syntax: scriptTemplate [-g|h|v|V]
+options:
+-h     Print this Help.
+-d     Domain - Get active domain certificates info from crt.sh
+       -d <DOMAIN> 
+-l     List - like -d but for at list of domains in crt/domain_list     
+END
+}
+
+### Set variables
+scriptname='mycrt'
+runtime=$(date +"%Y_%m_%d_%H_%M_%S")
+
+### Functions
+
+_cleantemp() {
+    if [ -d "${tempdir}" ];then
+        rm -rf "${tempdir}"
+    fi
+}
+
+_init() {
+    mkdir -p crt
+    #rm crt/crt*.csv
+    touch crt/domain_list
+}
+
+_combine() {
+    # combine all csv files, 
+    awk 'FNR==1 && NR!=1{next;}{print}' crt/crt_*.csv >> crt/domain_merged.out
+    cp crt/domain_merged.out crt/domain_merged__${runtime}.csv
+    rm crt/domain_merged.out
+    echo "wiew result in crt/domain_merged__${runtime}.csv"
+}
+
+_domaincrtdata(){
+   domain=$1
+
+   # Define temp dir and tempifile
+   tempdir=".${scriptname}.$$.tmp"
+   if [ ! -d "${tempdir}" ];then
+         mkdir "${tempdir}"
+   fi
+   tempfile="${tempdir}/${domain}.$$.rl.tmp"
+
+   echo "${runtime} - Checking certs for ${domain}"
+   echo 
+   echo "--------"
+   echo "Results for $domain, more info in crt/crt_${domain}_${runtime}.csv "
+   curl -s https://crt.sh/\?q\=\%.${domain}\&exclude\=expired\&deduplicate\=Y\&output\=json >> "$tempfile" 2>/dev/null
+
+   # save to file
+   cat $tempfile | jq -r 'map({common_name, name_value, entry_timestamp, not_before, not_after, serial_number, issuer_ca_id, issuer_name,id}) | (first | keys_unsorted) as $keys | map([to_entries[] | .value]) as $rows | $keys,$rows[] | @csv' > crt/crt_${domain}_${runtime}.csv
+
+   # Show on screen
+   echo "--------"
+   echo "Short screen info "
+   cat $tempfile | jq -r 'map({common_name, not_after}) | (first | keys_unsorted) as $keys | map([to_entries[] | .value]) as $rows | $keys,$rows[] | @csv'
+   _cleantemp         
+}
+
+### Get the options - menu
+while getopts "hl :d:" option; do
+   case $option in
+      h) # display Help
+        _help
+        exit;;
+
+      d) # Domain
+        _init
+        _domaincrtdata ${OPTARG}
+                
+        exit;;
+
+      l) # List of domains
+        _init
+        FILE=crt/domain_list
+        if test -f "$FILE"; then
+        cat "$FILE" | while read LREAD
+        do
+            if [[ ( ${LREAD} != "" ) ]]; then 
+                _domaincrtdata ${LREAD}
+            fi
+        done
+        fi 
+        _combine
+        exit;;
+               
+     \?) # Invalid option
+        echo "Error: Invalid option"
+        _help
+        exit;;
+   esac
+done
