@@ -24,6 +24,7 @@ END
 }
 
 ### Set variables
+
 scriptname='mycrt'
 runtime=$(date +"%Y_%m_%d_%H_%M_%S")
 
@@ -37,8 +38,8 @@ _cleantemp() {
 
 _init() {
     mkdir -p crt
-    #rm crt/crt*.csv
-    touch crt/domain_list
+    rm crt/crt*.csv 2> /dev/null
+    #touch crt/domain_list
 }
 
 _combine() {
@@ -64,19 +65,23 @@ _domaincrtdata(){
    echo "--------"
    echo "Results for $domain, more info in crt/crt_${domain}_${runtime}.csv "
    curl -s https://crt.sh/\?q\=\%.${domain}\&exclude\=expired\&deduplicate\=Y\&output\=json >> "$tempfile" 2>/dev/null
-
+   
    # save to file
-   cat $tempfile | jq -r 'map({common_name, name_value, entry_timestamp, not_before, not_after, serial_number, issuer_ca_id, issuer_name,id}) | (first | keys_unsorted) as $keys | map([to_entries[] | .value]) as $rows | $keys,$rows[] | @csv' > crt/crt_${domain}_${runtime}.csv
-
-   # Show on screen
-   echo "--------"
-   echo "Short screen info "
-   cat $tempfile | jq -r 'map({common_name, not_after}) | (first | keys_unsorted) as $keys | map([to_entries[] | .value]) as $rows | $keys,$rows[] | @csv'
+   cat $tempfile | jq -r '.[] += { "domain": "'$domain'" }' | jq -r 'map({domain,common_name, name_value, entry_timestamp, not_before, not_after, serial_number, issuer_ca_id, issuer_name,id}) | (first | keys_unsorted) as $keys | map([to_entries[] | .value]) as $rows | $keys,$rows[] | @csv ' > crt/crt_${domain}_${runtime}.csv
+   
+   if [[ -s crt/crt_${domain}_${runtime}.csv ]] ; then
+   echo "ok"
+   else
+   cat > crt/crt_${domain}_${runtime}.csv <<EOF
+"domain","common_name","name_value","entry_timestamp","not_before","not_after","serial_number","issuer_ca_id","issuer_name","id"
+"${domain}", "No active Certificate", "N/A", "N/A", "N/A", "N/A", "N/A", "N/A", "N/A", "N/A"
+EOF
+   fi ;
    _cleantemp         
 }
 
 ### Get the options - menu
-while getopts "hl :d:" option; do
+while getopts "hcl :d:" option; do
    case $option in
       h) # display Help
         _help
@@ -85,7 +90,6 @@ while getopts "hl :d:" option; do
       d) # Domain
         _init
         _domaincrtdata ${OPTARG}
-                
         exit;;
 
       l) # List of domains
@@ -100,6 +104,10 @@ while getopts "hl :d:" option; do
         done
         fi 
         _combine
+        exit;;
+
+      c) #clen temp folders
+        _init
         exit;;
                
      \?) # Invalid option
