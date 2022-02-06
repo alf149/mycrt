@@ -6,7 +6,7 @@ _help()
 cat <<-END
 #########################################################################
 # Author: alf149                                                        #
-# Scriptname: mycrt version 0.5                                         #
+# Scriptname: mycrt version 1.1.001                                     #
 # You'll find last version at https://github.com/alf149/myfiles         #
 #                                                                       #
 # Uses jq as json handler                                               #
@@ -24,9 +24,7 @@ END
 }
 
 ### Set variables
-
 scriptname='mycrt'
-version = '1.1'
 runtime=$(date +"%Y_%m_%d_%H_%M_%S")
 
 ### Functions
@@ -82,7 +80,7 @@ EOF
 }
 
 ### Get the options - menu
-while getopts "hclv :d:" option; do
+while getopts "hcl :d:" option; do
    case $option in
       h) # display Help
         _help
@@ -109,9 +107,6 @@ while getopts "hclv :d:" option; do
 
       c) #clen temp folders
         _init
-        exit;;
-      v) ## show verison
-        echo $verison
         exit;;
                
      \?) # Invalid option
