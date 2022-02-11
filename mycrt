@@ -66,7 +66,8 @@ _domaincrtdata(){
    curl -s https://crt.sh/\?q\=\%.${domain}\&exclude\=expired\&deduplicate\=Y\&output\=json >> "$tempfile" 2>/dev/null
    
    # save to file
-   cat $tempfile | jq -r '.[] += { "domain": "'$domain'" }' | jq -r 'map({domain,common_name, name_value, entry_timestamp, not_before, not_after, serial_number, issuer_ca_id, issuer_name,id}) | (first | keys_unsorted) as $keys | map([to_entries[] | .value]) as $rows | $keys,$rows[] | @csv ' > crt/crt_${domain}_${runtime}.csv
+   cat $tempfile | jq -r '.[] += { "domain": "'$domain'" }' | jq -r 'map({domain,common_name, name_value, entry_timestamp, not_before, not_after, serial_number, issuer_ca_id, issuer_name, id}) | (first | keys_unsorted) as $keys | map([to_entries[] | .value]) as $rows | $keys,$rows[] | @csv ' > crt/crt_${domain}_${runtime}.csv
+   ##cat $tempfile | jq -r 'map({domain,common_name, name_value, entry_timestamp, not_before, not_after, serial_number, issuer_ca_id, issuer_name, id}) | (first | keys_unsorted) as $keys | map([to_entries[] | .value]) as $rows | $keys,$rows[] | @csv ' > crt/crt_${domain}_${runtime}.csv
    
    if [[ -s crt/crt_${domain}_${runtime}.csv ]] ; then
    echo "ok"
