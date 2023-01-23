@@ -33,6 +33,6 @@ options:
 
 or 
 
-./mycrt -l # this needs a prebuild crt/domain_list to work
+./mycrt -l # this needs a prebuild crt/domain_list to work (one line pr domain.)
 
 ```
